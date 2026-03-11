@@ -11,6 +11,7 @@ import android.media.AudioManager;
 import android.os.Handler;
 import android.os.IBinder;
 import android.os.Looper;
+import android.provider.Settings;
 import androidx.core.app.NotificationCompat;
 
 public class VolumeLockService extends Service {
@@ -49,7 +50,7 @@ public class VolumeLockService extends Service {
             @Override
             public void run() {
                 if (!isRunning) return;
-                setAllVolumesZero();
+                muteAllStreams();
                 handler.postDelayed(this, INTERVAL_MS);
             }
         };
@@ -64,7 +65,7 @@ public class VolumeLockService extends Service {
         stopSelf();
     }
 
-    private void setAllVolumesZero() {
+    private void muteAllStreams() {
         int[] streams = {
             AudioManager.STREAM_MUSIC,
             AudioManager.STREAM_RING,
@@ -76,10 +77,22 @@ public class VolumeLockService extends Service {
         for (int stream : streams) {
             try {
                 audioManager.setStreamVolume(stream, 0, 0);
-            } catch (Exception e) {
-                // ignore
-            }
+            } catch (Exception ignored) {}
         }
+
+        // Using WRITE_SECURE_SETTINGS path
+        try {
+            Settings.System.putInt(getContentResolver(),
+                "volume_music", 0);
+            Settings.System.putInt(getContentResolver(),
+                "volume_ring", 0);
+            Settings.System.putInt(getContentResolver(),
+                "volume_alarm", 0);
+            Settings.System.putInt(getContentResolver(),
+                "volume_notification", 0);
+            Settings.System.putInt(getContentResolver(),
+                "volume_system", 0);
+        } catch (Exception ignored) {}
     }
 
     private Notification buildNotification() {
