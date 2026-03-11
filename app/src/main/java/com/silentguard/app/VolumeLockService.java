@@ -5,9 +5,11 @@ import android.app.NotificationChannel;
 import android.app.NotificationManager;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.Context;
 import android.content.Intent;
-import android.os.IBinder;
+import android.media.AudioManager;
 import android.os.Handler;
+import android.os.IBinder;
 import android.os.Looper;
 import androidx.core.app.NotificationCompat;
 
@@ -21,39 +23,34 @@ public class VolumeLockService extends Service {
 
     private Handler handler;
     private Runnable volumeRunnable;
-    private static final int INTERVAL_MS = 2000; // Every 2 seconds
+    private AudioManager audioManager;
+    private static final int INTERVAL_MS = 1000;
 
     @Override
     public void onCreate() {
         super.onCreate();
         handler = new Handler(Looper.getMainLooper());
+        audioManager = (AudioManager) getSystemService(Context.AUDIO_SERVICE);
         createNotificationChannel();
     }
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         if (intent == null) return START_STICKY;
-
-        String action = intent.getAction();
-        if (ACTION_START.equals(action)) {
-            startLocking();
-        } else if (ACTION_STOP.equals(action)) {
-            stopLocking();
-        }
+        if (ACTION_START.equals(intent.getAction())) startLocking();
+        else if (ACTION_STOP.equals(intent.getAction())) stopLocking();
         return START_STICKY;
     }
 
     private void startLocking() {
         isRunning = true;
         startForeground(NOTIFICATION_ID, buildNotification());
-
         volumeRunnable = new Runnable() {
             @Override
             public void run() {
-                if (isRunning) {
-                    setVolumeToZero();
-                    handler.postDelayed(this, INTERVAL_MS);
-                }
+                if (!isRunning) return;
+                setAllVolumesZero();
+                handler.postDelayed(this, INTERVAL_MS);
             }
         };
         handler.post(volumeRunnable);
@@ -61,29 +58,26 @@ public class VolumeLockService extends Service {
 
     private void stopLocking() {
         isRunning = false;
-        if (handler != null && volumeRunnable != null) {
+        if (handler != null && volumeRunnable != null)
             handler.removeCallbacks(volumeRunnable);
-        }
         stopForeground(true);
         stopSelf();
     }
 
-    private void setVolumeToZero() {
-        // All audio streams set to 0 silently
-        String[] commands = {
-            "media volume --stream 0 --set 0",  // Voice call
-            "media volume --stream 1 --set 0",  // System
-            "media volume --stream 2 --set 0",  // Ring
-            "media volume --stream 3 --set 0",  // Media (YouTube etc)
-            "media volume --stream 4 --set 0",  // Alarm
-            "media volume --stream 5 --set 0",  // Notification
+    private void setAllVolumesZero() {
+        int[] streams = {
+            AudioManager.STREAM_MUSIC,
+            AudioManager.STREAM_RING,
+            AudioManager.STREAM_NOTIFICATION,
+            AudioManager.STREAM_ALARM,
+            AudioManager.STREAM_SYSTEM,
+            AudioManager.STREAM_VOICE_CALL
         };
-
-        for (String cmd : commands) {
+        for (int stream : streams) {
             try {
-                Runtime.getRuntime().exec(cmd);
+                audioManager.setStreamVolume(stream, 0, 0);
             } catch (Exception e) {
-                // Silently ignore errors
+                // ignore
             }
         }
     }
@@ -91,21 +85,19 @@ public class VolumeLockService extends Service {
     private Notification buildNotification() {
         Intent stopIntent = new Intent(this, VolumeLockService.class);
         stopIntent.setAction(ACTION_STOP);
-        PendingIntent stopPendingIntent = PendingIntent.getService(
-            this, 0, stopIntent, PendingIntent.FLAG_IMMUTABLE
-        );
+        PendingIntent stopPending = PendingIntent.getService(
+            this, 0, stopIntent, PendingIntent.FLAG_IMMUTABLE);
 
         Intent openIntent = new Intent(this, MainActivity.class);
-        PendingIntent openPendingIntent = PendingIntent.getActivity(
-            this, 0, openIntent, PendingIntent.FLAG_IMMUTABLE
-        );
+        PendingIntent openPending = PendingIntent.getActivity(
+            this, 0, openIntent, PendingIntent.FLAG_IMMUTABLE);
 
         return new NotificationCompat.Builder(this, CHANNEL_ID)
             .setContentTitle("SilentGuard Active")
             .setContentText("Volume locked at zero")
             .setSmallIcon(android.R.drawable.ic_lock_silent_mode)
-            .setContentIntent(openPendingIntent)
-            .addAction(android.R.drawable.ic_media_pause, "Stop", stopPendingIntent)
+            .setContentIntent(openPending)
+            .addAction(android.R.drawable.ic_media_pause, "Stop", stopPending)
             .setOngoing(true)
             .setPriority(NotificationCompat.PRIORITY_LOW)
             .build();
@@ -113,27 +105,19 @@ public class VolumeLockService extends Service {
 
     private void createNotificationChannel() {
         NotificationChannel channel = new NotificationChannel(
-            CHANNEL_ID,
-            "SilentGuard",
-            NotificationManager.IMPORTANCE_LOW
-        );
-        channel.setDescription("Keeps volume locked at zero");
+            CHANNEL_ID, "SilentGuard", NotificationManager.IMPORTANCE_LOW);
         channel.setSound(null, null);
-        NotificationManager manager = getSystemService(NotificationManager.class);
-        manager.createNotificationChannel(channel);
+        getSystemService(NotificationManager.class).createNotificationChannel(channel);
     }
 
     @Override
-    public IBinder onBind(Intent intent) {
-        return null;
-    }
+    public IBinder onBind(Intent intent) { return null; }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
         isRunning = false;
-        if (handler != null && volumeRunnable != null) {
+        if (handler != null && volumeRunnable != null)
             handler.removeCallbacks(volumeRunnable);
-        }
     }
 }
