@@ -1,0 +1,115 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#121212">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:gravity="center_horizontal"
+        android:padding="32dp"
+        android:minHeight="600dp">
+
+        <TextView
+            android:id="@+id/titleText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="🔇 SilentGuard"
+            android:textSize="28sp"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:layout_marginTop="48dp"
+            android:layout_marginBottom="8dp"/>
+
+        <TextView
+            android:id="@+id/statusText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="⏸ Inactive"
+            android:textSize="18sp"
+            android:textColor="#9E9E9E"
+            android:layout_marginBottom="16dp"/>
+
+        <TextView
+            android:id="@+id/descText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Tap Start to lock volume at zero."
+            android:textSize="14sp"
+            android:textColor="#757575"
+            android:gravity="center"
+            android:layout_marginBottom="40dp"/>
+
+        <!-- Main toggle -->
+        <Button
+            android:id="@+id/toggleButton"
+            android:layout_width="200dp"
+            android:layout_height="56dp"
+            android:text="Start"
+            android:textSize="18sp"
+            android:textColor="#FFFFFF"
+            android:textStyle="bold"
+            android:backgroundTint="#1976D2"
+            android:stateListAnimator="@null"
+            android:visibility="visible"/>
+
+        <!-- Hide button -->
+        <Button
+            android:id="@+id/hideButton"
+            android:layout_width="200dp"
+            android:layout_height="48dp"
+            android:layout_marginTop="16dp"
+            android:text="🙈 Hide App Icon"
+            android:textSize="14sp"
+            android:textColor="#AAAAAA"
+            android:backgroundTint="#2A2A2A"
+            android:stateListAnimator="@null"
+            android:visibility="visible"/>
+
+        <TextView
+            android:id="@+id/hintText"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="To unhide: open Phone app and dial *#7777#"
+            android:textSize="12sp"
+            android:textColor="#444444"
+            android:gravity="center"/>
+
+        <!-- Setup card -->
+        <LinearLayout
+            android:id="@+id/setupCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#1E1E1E"
+            android:padding="24dp"
+            android:layout_marginTop="16dp"
+            android:visibility="gone">
+
+            <TextView
+                android:id="@+id/setupStatusText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textSize="15sp"
+                android:textColor="#DDDDDD"
+                android:lineSpacingExtra="4dp"
+                android:layout_marginBottom="24dp"/>
+
+            <Button
+                android:id="@+id/setupButton"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:text="Continue"
+                android:textSize="16sp"
+                android:textColor="#FFFFFF"
+                android:textStyle="bold"
+                android:backgroundTint="#1976D2"
+                android:stateListAnimator="@null"/>
+
+        </LinearLayout>
+
+    </LinearLayout>
+</ScrollView>

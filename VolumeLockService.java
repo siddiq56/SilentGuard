@@ -1,0 +1,139 @@
+package com.silentguard.app;
+
+import android.app.Notification;
+import android.app.NotificationChannel;
+import android.app.NotificationManager;
+import android.app.PendingIntent;
+import android.app.Service;
+import android.content.Intent;
+import android.os.IBinder;
+import android.os.Handler;
+import android.os.Looper;
+import androidx.core.app.NotificationCompat;
+
+public class VolumeLockService extends Service {
+
+    public static final String ACTION_START = "START";
+    public static final String ACTION_STOP = "STOP";
+    public static final String CHANNEL_ID = "SilentGuardChannel";
+    public static final int NOTIFICATION_ID = 1;
+    public static boolean isRunning = false;
+
+    private Handler handler;
+    private Runnable volumeRunnable;
+    private static final int INTERVAL_MS = 2000; // Every 2 seconds
+
+    @Override
+    public void onCreate() {
+        super.onCreate();
+        handler = new Handler(Looper.getMainLooper());
+        createNotificationChannel();
+    }
+
+    @Override
+    public int onStartCommand(Intent intent, int flags, int startId) {
+        if (intent == null) return START_STICKY;
+
+        String action = intent.getAction();
+        if (ACTION_START.equals(action)) {
+            startLocking();
+        } else if (ACTION_STOP.equals(action)) {
+            stopLocking();
+        }
+        return START_STICKY;
+    }
+
+    private void startLocking() {
+        isRunning = true;
+        startForeground(NOTIFICATION_ID, buildNotification());
+
+        volumeRunnable = new Runnable() {
+            @Override
+            public void run() {
+                if (isRunning) {
+                    setVolumeToZero();
+                    handler.postDelayed(this, INTERVAL_MS);
+                }
+            }
+        };
+        handler.post(volumeRunnable);
+    }
+
+    private void stopLocking() {
+        isRunning = false;
+        if (handler != null && volumeRunnable != null) {
+            handler.removeCallbacks(volumeRunnable);
+        }
+        stopForeground(true);
+        stopSelf();
+    }
+
+    private void setVolumeToZero() {
+        // All audio streams set to 0 silently
+        String[] commands = {
+            "media volume --stream 0 --set 0",  // Voice call
+            "media volume --stream 1 --set 0",  // System
+            "media volume --stream 2 --set 0",  // Ring
+            "media volume --stream 3 --set 0",  // Media (YouTube etc)
+            "media volume --stream 4 --set 0",  // Alarm
+            "media volume --stream 5 --set 0",  // Notification
+        };
+
+        for (String cmd : commands) {
+            try {
+                Runtime.getRuntime().exec(cmd);
+            } catch (Exception e) {
+                // Silently ignore errors
+            }
+        }
+    }
+
+    private Notification buildNotification() {
+        Intent stopIntent = new Intent(this, VolumeLockService.class);
+        stopIntent.setAction(ACTION_STOP);
+        PendingIntent stopPendingIntent = PendingIntent.getService(
+            this, 0, stopIntent, PendingIntent.FLAG_IMMUTABLE
+        );
+
+        Intent openIntent = new Intent(this, MainActivity.class);
+        PendingIntent openPendingIntent = PendingIntent.getActivity(
+            this, 0, openIntent, PendingIntent.FLAG_IMMUTABLE
+        );
+
+        return new NotificationCompat.Builder(this, CHANNEL_ID)
+            .setContentTitle("SilentGuard Active")
+            .setContentText("Volume locked at zero")
+            .setSmallIcon(android.R.drawable.ic_lock_silent_mode)
+            .setContentIntent(openPendingIntent)
+            .addAction(android.R.drawable.ic_media_pause, "Stop", stopPendingIntent)
+            .setOngoing(true)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .build();
+    }
+
+    private void createNotificationChannel() {
+        NotificationChannel channel = new NotificationChannel(
+            CHANNEL_ID,
+            "SilentGuard",
+            NotificationManager.IMPORTANCE_LOW
+        );
+        channel.setDescription("Keeps volume locked at zero");
+        channel.setSound(null, null);
+        NotificationManager manager = getSystemService(NotificationManager.class);
+        manager.createNotificationChannel(channel);
+    }
+
+    @Override
+    public IBinder onBind(Intent intent) {
+        return null;
+    }
+
+    @Override
+    public void onDestroy() {
+        super.onDestroy();
+        isRunning = false;
+        if (handler != null && volumeRunnable != null) {
+            handler.removeCallbacks(volumeRunnable);
+        }
+    }
+}
